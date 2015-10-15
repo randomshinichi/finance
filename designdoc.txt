@@ -1,0 +1,23 @@
+I want to see how much of my expenses are going to food, wants, bills, etc.
+These are the categories I can think of. Let's keep them few in number.
+food
+rent
+maintenance (health, expenses to maintain equipment)
+bills
+transport
+want
+
+Todo:
+when I type show food, I should get food expenditures from both cash and debit, with the total between them
+
+my CSVs will follow this format:
+date,category,details,amount
+
+commands available in the shell:
+cat 0 category
+type 0 cash
+
+show (type) (category)
+show debit food
+show cash uncategorized
+show all
