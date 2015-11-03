@@ -1,9 +1,13 @@
 BVG,transport
 AUTOMATENVERK.S-BAHN.BER//S,transport
+S-BAHN,transport
+AUTOMAT//OLDENBURG(OLDB)/DE,transport
 
+Stromio,bills
 06709751-ZE0112135973/Kartengebuehr,bills
 06709751-ZE0113236771/Beitrag,bills
 
+FRERICHS,food
 KAISERS,food
 AMICI,food
 MINGS,food
@@ -23,6 +27,10 @@ SATURN,want
 WEBRESERVAT,rent
 SCHOENHAUSER-APOTHEKE,maintenance
 "APOTHEKE,",maintenance
+MEDICUS,maintenance
+MARKT,want
+LOEWENBRAEU,food
+E-REICHELT,food
 ZOLLB2151ZASCHOENEBERG,want
 MARTINBECKE,bills
 CYDIASAURIK,want
@@ -36,7 +44,19 @@ TOTO,food
 SHOE,maintenance
 EDEKA,food
 RESTAURANT,food
+"RESTAURANT,",food
 ROSSMANN,maintenance
 GESOBAU,rent
 Gesobau,rent
 McFIT,bills
+ALNATURA,food
+IKEA,want
+OBI,maintenance
+SALON,maintenance
+DROGERIEMARKT,maintenance
+AMAZON,want
+SMILEYS,food
+ALDI,food
+ESSO,want
+WOOLWORTH,want
+XANH,food

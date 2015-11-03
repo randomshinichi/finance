@@ -2,10 +2,9 @@
 import cmd
 import pdb
 import re
-import Controller
 from tabulate import tabulate
 
-from Month import Month
+from behindthescenes import Analyzer
 
 
 class Interface(cmd.Cmd):
@@ -13,24 +12,10 @@ class Interface(cmd.Cmd):
 
     def __init__(self, *args, **kwargs):
         super(Interface, self).__init__(*args, **kwargs)
-        self.date = '09-2015'
-        self.month = Month(self.date, False)
-        self.cmdqueue = ['add bank', 'show']
-
-    def do_add(self, arg):
-        args = arg.split(' ')
-        if 'bank' in args:
-            filename = 'debit-' + self.month.month_year + '.csv'
-            self.month.dbank_parser(filename)
-            self.month.assign_type()
-            self.month.assign_category()
-
-        if 'cash' in args:
-            filename = 'cash-' + self.month.month_year + '.csv'
-            self.month.cash_parser(filename)
-        if 'ccard' in args:
-            filename = 'ccard-' + self.month.month_year + '.csv'
-            self.month.ccard_parser(filename)
+        self.date = '10-2015'
+        self.analyzer = Analyzer(self.date, True)
+        self.cmdqueue = ['analyze']
+        self.cleaner_details = True
 
     def do_show(self, arg):  # arg is category, paymentMethod
         """
@@ -39,26 +24,33 @@ class Interface(cmd.Cmd):
         """
         args = arg.split(' ')
         if not args[0]:
-            bank_transactions, bank_total = self.month.db.get_all()
-            cash_transactions, cash_total = self.month.db.get_cash()
+            transactions, total = self.analyzer.get()
         elif len(args) == 1:
-            bank_transactions, bank_total = self.month.db.get(args[0])
+            category = None
+            paymentMethod = None
+            if args[0] in ['ccard', 'atm', 'debit', 'cash']:
+                paymentMethod = args[0]
+            else:
+                category = args[0]
+            transactions, total = self.analyzer.get(category=category,paymentMethod=paymentMethod)
         elif len(args) == 2:
-            bank_transactions, bank_total = self.month.db.get(args[0], args[1])
+            transactions, total = self.analyzer.get(category=args[0], paymentMethod=args[1])
 
-        bank_transactions = self.sanitize_details(bank_transactions)
+        if self.cleaner_details:
+            transactions = self.sanitize_details(transactions)
 
-        print(tabulate(bank_transactions))
-        print("Total:", bank_total)
-
-        # if I type 'show', show cash and ccard imported transactions too
-        if not args[0]:
-            print(tabulate(cash_transactions))
-            print("Spent via cash:", cash_total)
+        print(tabulate(transactions))
+        print(total)
 
     def do_analyze(self, arg):
-        analysis = Controller.analyze(self.month)
-        print(tabulate(analysis))
+        analysis = self.analyzer.analyze()
+        output_for_tabulate = []
+        grand_total = 0
+        for a in sorted(analysis.keys()):
+            output_for_tabulate.append([a, analysis[a]])
+            grand_total+=analysis[a]
+        print(tabulate(output_for_tabulate))
+        print("Total Spent: ", grand_total)
 
     def do_split(self, arg):
         if not arg:
@@ -70,7 +62,7 @@ class Interface(cmd.Cmd):
         category = input("How would you categorize it? ")
         expense = input("How much was it? ")
 
-        self.month.db.insert_split(int(arg), details, category, expense)
+        self.analyzer.split_transaction(int(arg), details, category, expense)
 
     def do_cat(self, arg):
         """
@@ -80,7 +72,7 @@ class Interface(cmd.Cmd):
         try:
             i, category = arg.split()
             i = int(i)
-            self.month.db.update_category(i, category)
+            self.analyzer.update_category(i, category)
         except ValueError:
             print("Give 2 arguments, the id and the new category")
 
@@ -95,14 +87,14 @@ class Interface(cmd.Cmd):
                 raise ValueError(
                     "You can only classify payments as debit, atm or ccard")
             i = int(i)
-            self.month.db.update_type(i, paymentmethod)
+            self.analyzer.update_type(i, paymentmethod)
             if paymentmethod == 'atm':
-                self.month.db.update_category(i, 'unaccounted')
+                self.analyzer.update_category(i, 'unaccounted')
         except ValueError as e:
             print(e)
 
     def do_recategorize(self, arg):
-        self.month.assign_category()
+        self.analyzer.assign_category()
 
     def do_exit(self, arg):
         return -1
@@ -121,6 +113,14 @@ class Interface(cmd.Cmd):
             new_transactions.append(
                 (t[0], t[1], details, t[3], t[4], t[5], t[6], t[7]))
         return new_transactions
+
+    def do_sanitize_details(self, arg):
+        if self.cleaner_details:
+            self.cleaner_details = False
+            print("Displaying full details")
+        else:
+            self.cleaner_details = True
+            print("Filtering excess numbers in debit card transactions")
 
 if __name__ == "__main__":
     i = Interface()
