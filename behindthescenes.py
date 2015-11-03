@@ -52,6 +52,7 @@ class Database:
             transactionsAccount TEXT,
             hash INTEGER UNIQUE
             )''')
+
     def update_category(self, id, category):
         self.cur.execute(
             'UPDATE transactions SET category = ? WHERE ID = ?', (category, id))
@@ -83,7 +84,8 @@ class Database:
         return transactions
 
     def get_nocash_noccard(self):
-        transactions = self.cur.execute('SELECT %s FROM transactions WHERE paymentMethod IS NOT ?' % self.transactions_fields, ('cash',)).fetchall()
+        transactions = self.cur.execute(
+            'SELECT %s FROM transactions WHERE paymentMethod IS NOT ?' % self.transactions_fields, ('cash',)).fetchall()
         return transactions
 
     def get_distinct_categories(self):
@@ -116,7 +118,8 @@ class Database:
                 transactions)
         except sqlite3.IntegrityError as e:
             print("Database:", e)
-            rows = len(self.cur.execute('SELECT * FROM transactions').fetchall())
+            rows = len(
+                self.cur.execute('SELECT * FROM transactions').fetchall())
             print("Database: Removed first %i lines, trying again" % rows)
             self.cur.executemany(
                 'INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)',
@@ -186,7 +189,8 @@ class Database:
             uniquehash = zlib.crc32(
                 bytes(date + details + str(expense), 'utf-8'))
             paymentMethod = 'cash'
-            transaction = (None, date, details, category, expense, None, paymentMethod, None, uniquehash)
+            transaction = (
+                None, date, details, category, expense, None, paymentMethod, None, uniquehash)
             transactions.append(transaction)
         self.insert_multiple(transactions)
         f.close()
@@ -204,7 +208,8 @@ class Database:
             uniquehash = zlib.crc32(
                 bytes(date + details + str(expense), 'utf-8'))
             paymentMethod = 'cash'
-            transaction = (None, date, details, category, expense, None, paymentMethod, None, uniquehash)
+            transaction = (
+                None, date, details, category, expense, None, paymentMethod, None, uniquehash)
             transactions.append(transaction)
         self.insert_multiple(transactions)
         f.close()
@@ -215,12 +220,12 @@ class Analyzer:
     def __init__(self, arg, makedbfile=False):
         self.month_year = arg
         if makedbfile:
-            self.db = Database(self.month_year)
+            self.db = Database('db/'+self.month_year)
         else:
             self.db = Database()
 
-        self.db.dbank_parser('debit-' + self.month_year + '.csv')
-        self.db.cash_parser('cash-' + self.month_year + '.csv')
+        self.db.dbank_parser('data/debit-' + self.month_year + '.csv')
+        self.db.cash_parser('data/cash-' + self.month_year + '.csv')
 
         self.assign_category()
         self.assign_type()
@@ -261,11 +266,12 @@ class Analyzer:
         # Get total expenditures for each category in transactions
         expense_areas = {}
         for c in self.db.get_distinct_categories():
-            expense_areas[c]=calctotal(self.db.get_transactions(category=c))
+            expense_areas[c] = calctotal(self.db.get_transactions(category=c))
 
-        # ATM withdrawals are unaccounted, but once cash is spent, it is accounted for in the cash CSV
+        # ATM withdrawals are unaccounted, but once cash is spent, it is
+        # accounted for in the cash CSV
         cash = calctotal(self.db.get_transactions(paymentMethod='cash'))
-        expense_areas['unaccounted']-=cash
+        expense_areas['unaccounted'] -= cash
         return expense_areas
 
     def update_category(self, id, category):
@@ -287,4 +293,3 @@ class Analyzer:
 
     def split_transaction(self, id, details, category, expense):
         self.db.split_transaction(id, details, category, expense)
-
