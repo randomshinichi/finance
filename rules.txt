@@ -7,6 +7,9 @@ Stromio,bills
 06709751-ZE0112135973/Kartengebuehr,bills
 06709751-ZE0113236771/Beitrag,bills
 
+GEHALT,income
+
+CONVERSE,want
 FRERICHS,food
 KAISERS,food
 AMICI,food

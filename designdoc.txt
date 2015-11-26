@@ -8,7 +8,7 @@ transport
 want
 
 Todo:
-when I type show food, I should get food expenditures from both cash and debit, with the total between them
+make cash CSVs easier to make
 
 my CSVs will follow this format:
 date,category,details,amount

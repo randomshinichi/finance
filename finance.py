@@ -2,17 +2,22 @@
 import cmd
 import pdb
 import re
+import sys
 from tabulate import tabulate
 
 from behindthescenes import Analyzer
 
 
+def cap(s, l):
+    return s if len(s) <= l else s[:l]
+
+
 class Interface(cmd.Cmd):
-    prompt = 'finance '
+    prompt = 'finance: '
 
     def __init__(self, *args, **kwargs):
         super(Interface, self).__init__(*args, **kwargs)
-        self.date = '10-2015'
+        self.date = sys.argv[1]
         self.analyzer = Analyzer(self.date, True)
         self.cmdqueue = ['analyze']
         self.cleaner_details = True
@@ -32,7 +37,7 @@ class Interface(cmd.Cmd):
                 paymentMethod = args[0]
             else:
                 category = args[0]
-            transactions, total = self.analyzer.get(category=category,paymentMethod=paymentMethod)
+            transactions, total = self.analyzer.get(category=category, paymentMethod=paymentMethod)
         elif len(args) == 2:
             transactions, total = self.analyzer.get(category=args[0], paymentMethod=args[1])
 
@@ -48,7 +53,7 @@ class Interface(cmd.Cmd):
         grand_total = 0
         for a in sorted(analysis.keys()):
             output_for_tabulate.append([a, analysis[a]])
-            grand_total+=analysis[a]
+            grand_total += analysis[a]
         print(tabulate(output_for_tabulate))
         print("Total Spent: ", grand_total)
 
@@ -111,7 +116,7 @@ class Interface(cmd.Cmd):
             elif useless27digits.match(details):
                 details = details[28:]
             new_transactions.append(
-                (t[0], t[1], details, t[3], t[4], t[5], t[6], t[7]))
+                (t[0], t[1], cap(details, 100), t[3], t[4], t[5], t[6], t[7]))
         return new_transactions
 
     def do_sanitize_details(self, arg):
@@ -121,6 +126,7 @@ class Interface(cmd.Cmd):
         else:
             self.cleaner_details = True
             print("Filtering excess numbers in debit card transactions")
+            print("Capping details to 100 characters")
 
 if __name__ == "__main__":
     i = Interface()

@@ -13,10 +13,6 @@ def convert_decimal(derp):
     return Decimal(derp.decode('utf-8'))
 
 
-def cap(s, l):
-    return s if len(s) <= l else s[:l]
-
-
 def calctotal(transactions):
     sum_list = []
     for i in transactions:
@@ -35,11 +31,11 @@ class Database:
             arg += '.db'
             self.con = sqlite3.connect(
                 arg, detect_types=sqlite3.PARSE_DECLTYPES)
-            print("Database: using file {0:s}".format(arg))
+            print("Database: using file storage: {0:s}".format(arg))
         else:
             self.con = sqlite3.connect(
                 ':memory:', detect_types=sqlite3.PARSE_DECLTYPES)
-            print("Database: data stored in RAM")
+            print("Database: using RAM")
         self.cur = self.con.cursor()
         self.cur.execute('''CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY,
@@ -117,10 +113,10 @@ class Database:
                 'INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)',
                 transactions)
         except sqlite3.IntegrityError as e:
-            print("Database:", e)
+            # print("Database:", e)
             rows = len(
                 self.cur.execute('SELECT * FROM transactions').fetchall())
-            print("Database: Removed first %i lines, trying again" % rows)
+            print("Database: Input data already exists in the database, trying again without the first %i lines" % rows)
             self.cur.executemany(
                 'INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)',
                 transactions[
@@ -178,7 +174,7 @@ class Database:
 
     def cash_parser(self, filename):
         f = open(filename, 'r', newline='', encoding='utf-8')
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, delimiter='\t')
         transactions = []
         for row in reader:
             day, month, year = row['date'].split('-')
@@ -197,7 +193,7 @@ class Database:
 
     def ccard_parser(self, filename):
         f = open(filename, 'r', newline='', encoding='utf-8')
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, delimiter='\t')
         transactions = []
         for row in reader:
             day, month, year = row['date'].split('-')
@@ -225,7 +221,10 @@ class Analyzer:
             self.db = Database()
 
         self.db.dbank_parser('data/debit-' + self.month_year + '.csv')
-        self.db.cash_parser('data/cash-' + self.month_year + '.csv')
+        try:
+            self.db.cash_parser('data/cash-' + self.month_year + '.csv')
+        except FileNotFoundError:
+            print("No cash CSV file found")
 
         self.assign_category()
         self.assign_type()
