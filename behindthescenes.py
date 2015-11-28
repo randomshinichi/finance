@@ -2,6 +2,7 @@ import csv
 import pdb
 import zlib
 import sqlite3
+import os
 from decimal import Decimal
 
 
@@ -20,9 +21,11 @@ def calctotal(transactions):
             sum_list.append(i[4])
     return sum(sum_list)
 
+credit_card_number = ''
+
 
 class Database:
-    transactions_fields = 'transactions.id,transactions.date,transactions.details,transactions.category,transactions.expense,transactions.income,transactions.paymentMethod,transactions.transactionsaccount'
+    transactions_fields = 'transactions.id,transactions.date,transactions.details,transactions.category,transactions.expense,transactions.income,transactions.paymentMethod'
 
     def __init__(self, arg=None):
         sqlite3.register_adapter(Decimal, adapt_decimal)
@@ -90,37 +93,13 @@ class Database:
         answer = [c[0] for c in categories]
         return answer
 
-    def split_transaction(self, id, details, category, expense):
-        expense = Decimal(expense) * -1
-        t = self.cur.execute(
-            'SELECT * FROM transactions WHERE id = ?', (id,)).fetchone()
-        split = (None, t[1], details, category, t[4], expense, t[6], t[7])
-
-        try:
-            self.cur.execute(
-                'INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?)', split)
-        except sqlite3.IntegrityError:
-            print("Database: a split with the same details already exists")
-            return
-        t_newexpense = t[5] - expense
-        self.cur.execute(
-            'UPDATE transactions SET expense = ? WHERE id = ?', (t_newexpense, id))
-        self.con.commit()
-
     def insert_multiple(self, transactions):
         try:
             self.cur.executemany(
                 'INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)',
                 transactions)
         except sqlite3.IntegrityError as e:
-            # print("Database:", e)
-            rows = len(
-                self.cur.execute('SELECT * FROM transactions').fetchall())
-            print("Database: Input data already exists in the database, trying again without the first %i lines" % rows)
-            self.cur.executemany(
-                'INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)',
-                transactions[
-                    rows:])
+            print("Database: Input data already exists. Not inserting anything")
         self.con.commit()
 
     def dbank_parser(self, filename):
@@ -213,11 +192,14 @@ class Database:
 
 class Analyzer:
 
-    def __init__(self, arg, makedbfile=False):
+    def __init__(self, arg, dbfile=False):
         self.month_year = arg
-        if makedbfile:
-            self.db = Database('db/'+self.month_year)
+
+        if dbfile:
+            print("Analyzer: opening db/" + self.month_year + ".db")
+            self.db = Database('db/' + self.month_year)
         else:
+            print("Analyzer: calling Database in RAM mode")
             self.db = Database()
 
         self.db.dbank_parser('data/debit-' + self.month_year + '.csv')
@@ -230,12 +212,12 @@ class Analyzer:
         self.assign_type()
 
     def assign_category(self):
-        with open('rules.txt', 'r', encoding='utf-8') as f:
+        with open('categories.csv', 'r', encoding='utf-8') as f:
             ruleslist = []
             reader = csv.reader(f)
             for r in reader:
-                if r:
-                    ruleslist.append(r)
+                if r:  # so that you can have blank lines in csv
+                    ruleslist.append(r[:2])  # the r[:2] only selects the first two columns of the csv
 
         rulesdict = dict(ruleslist)
         transactions = self.db.get_transactions()
@@ -252,10 +234,10 @@ class Analyzer:
         for t in transactions:
             t_id = t[0]
             details = t[2]
-            if details.find('GA NR') > -1:
+            if details.find('GA NR') > -1 or details.find('COMMERZBANK-AG/') > -1:
                 self.db.update_type(t_id, 'atm')
                 self.db.update_category(t_id, 'unaccounted')
-            elif details.find('5401871613159050') > -1:
+            elif details.find(credit_card_number) > -1:
                 self.db.update_type(t_id, 'ccard')
                 self.db.update_category(t_id, 'unaccounted')
             else:
@@ -289,6 +271,3 @@ class Analyzer:
         else:
             total = calctotal(transactions)
         return transactions, total
-
-    def split_transaction(self, id, details, category, expense):
-        self.db.split_transaction(id, details, category, expense)

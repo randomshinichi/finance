@@ -2,13 +2,15 @@ I want to see how much of my expenses are going to food, wants, bills, etc.
 These are the categories I can think of. Let's keep them few in number.
 food
 rent
+infrastructure (new equipment necessary for survival)
 maintenance (health, expenses to maintain equipment)
 bills
 transport
 want
+social (food/drink costs incurred by social activities)
 
 Todo:
-make cash CSVs easier to make
+
 
 my CSVs will follow this format:
 date,category,details,amount
@@ -21,3 +23,5 @@ show (type) (category)
 show debit food
 show cash uncategorized
 show all
+
+

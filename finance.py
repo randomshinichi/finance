@@ -3,6 +3,7 @@ import cmd
 import pdb
 import re
 import sys
+import os
 from tabulate import tabulate
 
 from behindthescenes import Analyzer
@@ -11,6 +12,44 @@ from behindthescenes import Analyzer
 def cap(s, l):
     return s if len(s) <= l else s[:l]
 
+def find_max_column_widths(answer):
+    columns = list(zip(*answer))
+    max_column_widths = []
+
+    for c in columns:
+        maximum = 0
+        for x in c:
+            maximum = max(len(str(x)), maximum)
+        max_column_widths.append(maximum)
+
+    return max_column_widths
+
+def build_output(answer, filter_more):
+    rows, columns = os.popen('stty size', 'r').read().split()
+    output = []
+    
+    max_column_widths = find_max_column_widths(answer)
+    details_width = int(columns)-max_column_widths[0]-max_column_widths[1]-max_column_widths[3]-max_column_widths[4]-max_column_widths[5]-(2*len(max_column_widths))
+
+    useless27digits = re.compile('[0-9]{27}')
+    uselesselv = re.compile('ELV[0-9]{8}')
+    for a in answer:
+        o = list(a)
+        details = o[2]
+        if filter_more:
+            if details[0:3] == 'EC ':
+                details = details[48:]
+            elif details[0:5] == 'GA NR':
+                details = details[27:]
+            elif useless27digits.match(details):
+                details = details[28:]
+            elif uselesselv.match(details):
+                details = details[12:]
+
+        o[2] = cap(details, details_width)
+        output.append(o)
+
+    return output
 
 class Interface(cmd.Cmd):
     prompt = 'finance: '
@@ -19,8 +58,8 @@ class Interface(cmd.Cmd):
         super(Interface, self).__init__(*args, **kwargs)
         self.date = sys.argv[1]
         self.analyzer = Analyzer(self.date, True)
-        self.cmdqueue = ['analyze']
-        self.cleaner_details = True
+        self.cmdqueue = ['show']
+        self.filter_more = True
 
     def do_show(self, arg):  # arg is category, paymentMethod
         """
@@ -41,10 +80,9 @@ class Interface(cmd.Cmd):
         elif len(args) == 2:
             transactions, total = self.analyzer.get(category=args[0], paymentMethod=args[1])
 
-        if self.cleaner_details:
-            transactions = self.sanitize_details(transactions)
+        output = build_output(transactions, self.filter_more)
 
-        print(tabulate(transactions))
+        print(tabulate(output))
         print(total)
 
     def do_analyze(self, arg):
@@ -57,17 +95,6 @@ class Interface(cmd.Cmd):
         print(tabulate(output_for_tabulate))
         print("Total Spent: ", grand_total)
 
-    def do_split(self, arg):
-        if not arg:
-            print("Please tell me which transaction id to split")
-            return
-        print("Splitting transaction %s" % arg)
-        details = 'split from {0:s}: '.format(
-            arg) + input("What did you buy that was contained within that transaction? ")
-        category = input("How would you categorize it? ")
-        expense = input("How much was it? ")
-
-        self.analyzer.split_transaction(int(arg), details, category, expense)
 
     def do_cat(self, arg):
         """
@@ -104,29 +131,14 @@ class Interface(cmd.Cmd):
     def do_exit(self, arg):
         return -1
 
-    def sanitize_details(self, transactions):
-        useless27digits = re.compile('[0-9]{27}')
-        new_transactions = []
-        for t in transactions:
-            details = t[2]
-            if details[0:3] == 'EC ':
-                details = details[48:]
-            elif details[0:5] == 'GA NR':
-                details = details[28:]
-            elif useless27digits.match(details):
-                details = details[28:]
-            new_transactions.append(
-                (t[0], t[1], cap(details, 100), t[3], t[4], t[5], t[6], t[7]))
-        return new_transactions
-
-    def do_sanitize_details(self, arg):
-        if self.cleaner_details:
-            self.cleaner_details = False
+    def do_filter_more(self, arg):
+        if self.filter_more:
+            self.filter_more = False
             print("Displaying full details")
         else:
-            self.cleaner_details = True
+            self.filter_more = True
             print("Filtering excess numbers in debit card transactions")
-            print("Capping details to 100 characters")
+
 
 if __name__ == "__main__":
     i = Interface()
